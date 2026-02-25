@@ -23,8 +23,8 @@ func (i Input) Init() tea.Cmd {
 }
 
 func (i Input) Update(msg tea.Msg) (Input, tea.Cmd) {
-	var cmd tea.Cmd
-	i.Model, cmd = i.Model.Update(msg)
+	newModel, cmd := i.Model.Update(msg)
+	i.Model = newModel
 	return i, cmd
 }
 
