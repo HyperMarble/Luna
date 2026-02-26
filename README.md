@@ -1,6 +1,8 @@
+# The Project is highly in development contributions are welcome everything the roadmap, and all is inside the docs folder,
+
 # Luna
 
-AI CA Agent for Chartered Accountants
+AI Agent for Chartered Accountants
 
 ## Overview
 
