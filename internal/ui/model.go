@@ -1,35 +1,33 @@
 package ui
 
 import (
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type Model struct {
-	input   Input
-	spinner Spinner
-	tree    Tree
-	output  Output
+	width  int
+	height int
 
-	state             string
-	messages          []string
-	waitingForConfirm bool
-	confirmMsg        string
+	input textinput.Model
+
+	conversation []string
 }
 
 func NewModel() *Model {
-	return &Model{
-		input:   NewInput(),
-		spinner: NewSpinner(),
-		tree:    NewTree(),
-		output:  NewOutput(),
+	ti := textinput.New()
+	ti.Placeholder = "Ask Luna..."
+	ti.Focus()
+	ti.Width = 72
 
-		state:             "idle",
-		messages:          []string{},
-		waitingForConfirm: false,
-		confirmMsg:        "",
+	return &Model{
+		input: ti,
+		conversation: []string{
+			"Luna: Ask anything. I will keep responses clear and short.",
+		},
 	}
 }
 
 func (m *Model) Init() tea.Cmd {
-	return m.spinner.Init()
+	return textinput.Blink
 }

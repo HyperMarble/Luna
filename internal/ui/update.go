@@ -5,78 +5,38 @@ import (
 )
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	// Update spinner
-	m.spinner, cmd = m.spinner.Update(msg)
+	var inputCmd tea.Cmd
+	m.input, inputCmd = m.input.Update(msg)
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.input.Width = max(24, msg.Width-6)
+		return m, inputCmd
 
 	case tea.KeyMsg:
-		if msg.String() == "q" || msg.String() == "ctrl+c" {
+		switch msg.String() {
+		case "ctrl+c":
 			return m, tea.Quit
-		}
-
-		if m.waitingForConfirm {
-			switch msg.String() {
-			case "y", "Y":
-				m.waitingForConfirm = false
-				m.state = "writing"
-				m.messages = append(m.messages, "Confirmed!")
-			case "n", "N":
-				m.waitingForConfirm = false
-				m.state = "idle"
-				m.messages = append(m.messages, "Cancelled")
+		case "q":
+			if m.input.Value() == "" {
+				return m, tea.Quit
 			}
-			return m, cmd
-		}
-
-		switch msg.Type {
-		case tea.KeyEnter:
-			input := m.input.Value()
-			if input != "" {
-				if input == "exit" || input == "quit" {
-					return m, tea.Quit
-				}
-				m.messages = append(m.messages, input)
-				m.processInput(input)
+		case "enter":
+			prompt := m.input.Value()
+			if prompt != "" {
+				m.appendUserPrompt(prompt)
+				m.input.SetValue("")
 			}
-			m.input.Model.SetValue("")
+			return m, inputCmd
 		}
 	}
 
-	m.input, _ = m.input.Update(msg)
-	return m, cmd
+	return m, inputCmd
 }
 
-func (m *Model) processInput(input string) {
-	m.state = "reading"
-
-	if contains(input, "tax") || contains(input, "itr") {
-		m.tree.AddRead("form16.pdf")
-		m.tree.AddRead("26as.csv")
-		m.state = "processing"
-
-		m.waitingForConfirm = true
-		m.confirmMsg = "Create itr1.json with computed tax?"
-	} else if contains(input, "ingest") {
-		m.tree.AddRead("form16.pdf")
-		m.state = "idle"
-	} else if contains(input, "generate") {
-		m.tree.AddWrite("itr1.json")
-		m.waitingForConfirm = true
-		m.confirmMsg = "Create itr1.json?"
-	} else {
-		m.tree.AddRead("data.csv")
-		m.state = "idle"
-	}
-}
-
-func contains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+func (m *Model) appendUserPrompt(prompt string) {
+	m.conversation = append(m.conversation, "You: "+prompt)
+	m.conversation = append(m.conversation, "Luna: Got it.")
 }
