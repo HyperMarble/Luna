@@ -1,15 +1,21 @@
 package main
 
 import (
-	"log"
+	"fmt"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/hak/luna/internal/ui"
+	"github.com/hak/luna/internal/tui"
 )
 
 func main() {
-	p := tea.NewProgram(ui.NewModel())
+	p := tea.NewProgram(
+		tui.NewModel(),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
 	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "luna: %v\n", err)
+		os.Exit(1)
 	}
 }
