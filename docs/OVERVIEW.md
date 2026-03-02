@@ -1,0 +1,5 @@
+Luna is an AI agent built specifically for Chartered Accountants in India. You drop in your bank statements and invoices, and Luna builds a financial graph from them — then you just ask it in plain English: "what's my GST for January?" or "reconcile my bank statement" or "generate my GSTR-1." It searches live government sources for the latest tax rules, runs the computation, validates everything, and gives you a filing-ready JSON that you upload to the GST portal yourself. The CA stays in control of the final submission — Luna handles everything up to that point.
+
+It's basically Claude Code but for accounting. The same way Claude Code reads your codebase and helps you build software, Luna reads your books and helps you handle compliance. Open source, runs locally, your data never leaves your machine. Built on top of Claude (Anthropic) for reasoning and TinyFish for live web research so the tax rules are always current.
+
+The problem it solves is simple: CAs spend 60-70% of their time on mechanical tasks — data entry, cross-checking, reconciliation, filing. Luna automates all of that so the CA can focus on actually advising clients instead of doing data entry.

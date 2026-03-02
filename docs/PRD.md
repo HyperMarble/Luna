@@ -2,7 +2,7 @@
 
 ## What is Luna?
 
-Luna is a CLI-based AI agent that automates the CA (Chartered Accountancy) workflow — from raw client data to filed returns. It does for accounting what Claude Code does for software engineering: understand the full context, automate the grunt work, let the professional focus on judgment calls.
+Luna is a CLI-based AI agent that automates the CA (Chartered Accountancy)  — from raw client data to filed returns. It does for accounting what Claude Code does for software engineering: understand the full context, automate the grunt work, let the professional focus on judgment calls.
 
 Built on Anchor's graph architecture. Same tech (tree-sitter parsing, petgraph, MCP server), different domain.
 
