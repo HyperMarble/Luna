@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/hak/luna/internal/tui"
+	"github.com/HyperMarble/Luna/internal/tui"
 )
 
 func TestNewModel_InputFocused(t *testing.T) {

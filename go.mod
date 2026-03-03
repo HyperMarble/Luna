@@ -1,4 +1,4 @@
-module github.com/hak/luna
+module github.com/HyperMarble/Luna
 
 go 1.25.7
 
