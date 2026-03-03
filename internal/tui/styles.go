@@ -2,74 +2,72 @@ package tui
 
 import "github.com/charmbracelet/lipgloss"
 
-const headerHeight = 1
+// ── Header ───────────────────────────────────────────────────────────────────
 
-var (
-	// Header: "◆ Luna  v0.1.0"
-	headerStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("99")).
-			Padding(0, 1)
+var headerStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("99")). // purple
+	Padding(0, 1)
 
-	versionStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")).
-			Padding(0, 1)
+var versionStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("241")). // muted grey
+	Padding(0, 1)
 
-	// User message: "> message" pill
-	userPillStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("252")).
-			Background(lipgloss.Color("236")).
-			Padding(0, 1)
+// ── Welcome box ──────────────────────────────────────────────────────────────
 
-	userPromptStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
+var mascotStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("255")) // white
 
-	// Luna response: "● text"
-	responseBulletStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("208")) // orange like Claude Code
+var welcomeTitleStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("255")).
+	Padding(0, 1)
 
-	responseTextStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("252"))
+var welcomeSubStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("241"))
 
-	// Thinking: "* Word…"
-	thinkingStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("208")).
-			Italic(true)
+var welcomePathStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("238"))
 
-	// Composer divider
-	dividerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("238"))
+// ── Messages ─────────────────────────────────────────────────────────────────
 
-	// Input prompt "> "
-	inputPromptStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("241"))
+// userPillStyle wraps user messages in a grey pill: "> message"
+var userPillStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("252")).
+	Background(lipgloss.Color("236")).
+	Padding(0, 1)
 
-	// Welcome screen
-	mascotStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("255")) // white
+// responseBulletStyle colours the "●" orange, matching Claude Code's style.
+var responseBulletStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("208"))
 
-	welcomeTitleStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("255")).
-				Padding(0, 1)
+var responseTextStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("252"))
 
-	welcomeSubStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
+// thinkingStyle renders the animated "* Thinking…" indicator in orange italic.
+var thinkingStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("208")).
+	Italic(true)
 
-	welcomePathStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("238"))
+// ── Composer (input area) ────────────────────────────────────────────────────
 
-	// Slash command picker
-	pickerCmdStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("99"))
+var dividerStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("238"))
 
-	pickerSelectedStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("99"))
+var inputPromptStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("241"))
 
-	pickerDescStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
+// ── Slash command picker ─────────────────────────────────────────────────────
 
-	pickerSelectedDescStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("99"))
-)
+var pickerCmdStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("99"))
+
+var pickerDescStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("241"))
+
+var pickerSelectedStyle = lipgloss.NewStyle().
+	Bold(true).
+	Foreground(lipgloss.Color("99"))
+
+var pickerSelectedDescStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("99"))

@@ -2,20 +2,23 @@ package tui
 
 import "strings"
 
+// slashCommand is a single entry in the slash command menu.
 type slashCommand struct {
-	Name string
-	Desc string
+	Name string // e.g. "/help"
+	Desc string // shown in the picker alongside the name
 }
 
+// allCommands is the full list of available slash commands.
 var allCommands = []slashCommand{
 	{"/help", "Show all available commands"},
-	{"/clear", "Clear conversation and return to welcome"},
-	{"/model", "Show current AI model"},
+	{"/clear", "Clear the conversation"},
+	{"/model", "Show the current AI model"},
 	{"/plugins", "Manage plugins"},
 	{"/exit", "Exit Luna"},
 }
 
-// filteredCommands returns commands matching the current input prefix.
+// filteredCommands returns commands whose name starts with the current input.
+// If input is exactly "/" all commands are returned.
 func filteredCommands(input string) []slashCommand {
 	if input == "/" {
 		return allCommands
