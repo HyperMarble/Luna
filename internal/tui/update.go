@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -16,7 +17,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+		m.height = msg.Height
 		m.input.Width = msg.Width - 4
+		vpH := viewportH(msg.Height, msg.Width)
+		if !m.ready {
+			m.viewport = viewport.New(msg.Width, vpH)
+			m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
+			m.ready = true
+		} else {
+			m.viewport.Width = msg.Width
+			m.viewport.Height = vpH
+		}
 
 	case tea.KeyMsg:
 		// onKey may return early (e.g. ctrl+c, slash commands).
@@ -32,16 +43,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UserSubmitMsg:
 		m.messages = append(m.messages, Message{Role: "user", Content: msg.Text})
 		m.thinking = true
+		m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
+		m.viewport.GotoBottom()
 
 	case LunaStubMsg:
 		m.thinking = false
 		m.messages = append(m.messages, Message{Role: "luna", Content: msg.Text})
+		m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
+		m.viewport.GotoBottom()
 
 	case spinner.TickMsg:
 		if m.thinking {
 			var spinCmd tea.Cmd
 			m.spinner, spinCmd = m.spinner.Update(msg)
 			m.verbIdx++
+			m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
 			cmds = append(cmds, spinCmd)
 		}
 	}
@@ -49,7 +65,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Always refresh the text input so cursor blink and typing work.
 	var inputCmd tea.Cmd
 	m.input, inputCmd = m.input.Update(msg)
-	return m, tea.Batch(append(cmds, inputCmd)...)
+
+	// Always pass events to the viewport so mouse wheel and PgUp/PgDn scrolling work.
+	var vpCmd tea.Cmd
+	m.viewport, vpCmd = m.viewport.Update(msg)
+
+	return m, tea.Batch(append(cmds, inputCmd, vpCmd)...)
 }
 
 // ── Keyboard handling ─────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -21,6 +22,9 @@ type Message struct {
 // Model holds the full application state managed by the Bubble Tea runtime.
 type Model struct {
 	width     int             // terminal width, updated on resize
+	height    int             // terminal height, updated on resize
+	viewport  viewport.Model  // scrollable conversation area
+	ready     bool            // true once viewport is initialised with real dimensions
 	input     textinput.Model // the composer text field
 	spinner   spinner.Model   // dot spinner shown while thinking
 	messages  []Message       // conversation history
