@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // ── Main dispatcher ───────────────────────────────────────────────────────────
@@ -19,9 +20,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.input.Width = msg.Width - 4
-		vpH := viewportH(msg.Height, msg.Width)
+
+		// Measure the fixed chrome by rendering it at the new width and counting lines.
+		// This is the pattern from the official Bubble Tea pager example.
+		headerH := lipgloss.Height(renderHeader(msg.Width))
+		welcomeH := lipgloss.Height(renderWelcomeBox(msg.Width))
+		const composerH = 2 // divider line + input line (base, picker excluded)
+		vpH := max(1, msg.Height-headerH-welcomeH-composerH)
+
 		if !m.ready {
 			m.viewport = viewport.New(msg.Width, vpH)
+			m.viewport.YPosition = headerH + welcomeH
 			m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
 			m.ready = true
 		} else {
@@ -43,21 +52,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UserSubmitMsg:
 		m.messages = append(m.messages, Message{Role: "user", Content: msg.Text})
 		m.thinking = true
-		m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
-		m.viewport.GotoBottom()
+		if m.ready {
+			m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
+			m.viewport.GotoBottom()
+		}
 
 	case LunaStubMsg:
 		m.thinking = false
 		m.messages = append(m.messages, Message{Role: "luna", Content: msg.Text})
-		m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
-		m.viewport.GotoBottom()
+		if m.ready {
+			m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
+			m.viewport.GotoBottom()
+		}
 
 	case spinner.TickMsg:
 		if m.thinking {
 			var spinCmd tea.Cmd
 			m.spinner, spinCmd = m.spinner.Update(msg)
 			m.verbIdx++
-			m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
+			if m.ready {
+				m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
+			}
 			cmds = append(cmds, spinCmd)
 		}
 	}
@@ -66,7 +81,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var inputCmd tea.Cmd
 	m.input, inputCmd = m.input.Update(msg)
 
-	// Always pass events to the viewport so mouse wheel and PgUp/PgDn scrolling work.
+	// Pass events to the viewport so mouse wheel / PgUp / PgDn scrolling work.
 	var vpCmd tea.Cmd
 	m.viewport, vpCmd = m.viewport.Update(msg)
 
@@ -164,6 +179,10 @@ func (m Model) submitText(text string) (Model, tea.Cmd, bool) {
 	m.input.SetValue("")
 	m.messages = append(m.messages, Message{Role: "user", Content: text})
 	m.thinking = true
+	if m.ready {
+		m.viewport.SetContent(viewportContent(m.messages, m.thinking, m.verbIdx))
+		m.viewport.GotoBottom()
+	}
 	return m, tea.Batch(stubResponseCmd(text), m.spinner.Tick), false
 }
 
@@ -177,6 +196,10 @@ func (m Model) executeSlash(text string) (Model, tea.Cmd, bool) {
 	m.input.SetValue("")
 	m.pickerIdx = 0
 	newM, cmd := m.handleSlashCommand(text)
+	if newM.ready {
+		newM.viewport.SetContent(viewportContent(newM.messages, newM.thinking, newM.verbIdx))
+		newM.viewport.GotoBottom()
+	}
 	return newM, cmd, true
 }
 

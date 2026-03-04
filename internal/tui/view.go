@@ -31,22 +31,14 @@ func (m Model) View() string {
 	}
 	var b strings.Builder
 	b.WriteString(renderHeader(m.width) + "\n")
-	b.WriteString(renderWelcomeBox(m.width))
+	b.WriteString(renderWelcomeBox(m.width) + "\n")
 	b.WriteString(m.viewport.View())
 	b.WriteString("\n")
 	b.WriteString(renderComposer(m.width, m.input, m.pickerIdx))
 	return b.String()
 }
 
-// viewportH computes the number of lines available for the scrollable viewport.
-// It measures the fixed chrome (header + welcome box + composer) and gives the rest to the viewport.
-func viewportH(termHeight, termWidth int) int {
-	wbH := lipgloss.Height(renderWelcomeBox(termWidth))
-	// rows: header(1) + welcome(wbH) + viewport(vpH) + blank(1) + composer(2)
-	return max(1, termHeight-wbH-4)
-}
-
-// viewportContent builds the string set as the viewport's content on every state change.
+// viewportContent builds the full string set as the viewport's content.
 func viewportContent(messages []Message, thinking bool, verbIdx int) string {
 	return renderMessages(messages) + renderThinking(thinking, verbIdx)
 }
