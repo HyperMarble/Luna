@@ -3,8 +3,8 @@ package tui_test
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/HyperMarble/Luna/internal/tui"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestNewModel_InputFocused(t *testing.T) {

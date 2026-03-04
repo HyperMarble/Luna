@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/exec"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/HyperMarble/Luna/internal/tui"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // module is the fully qualified path used by go install to fetch the latest binary.
