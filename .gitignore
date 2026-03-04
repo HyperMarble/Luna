@@ -27,6 +27,7 @@ go.work.sum
 /luna
 # env file
 .env
+crush
 
 # Editor/IDE
 # .idea/
