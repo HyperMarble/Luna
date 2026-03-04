@@ -1,0 +1,66 @@
+package view
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/HyperMarble/Luna/internal/tui/style"
+)
+
+var mascot = []string{
+	"  ███ ███  ",
+	"██       ██",
+	"██  ^ ^  ██",
+	"██       ██",
+	"  ███ ███  ",
+}
+
+func renderWelcomeBox(width int) string {
+	if width == 0 {
+		width = 80
+	}
+	boxWidth := min(width, 72)
+	if width >= 40 {
+		boxWidth = max(40, boxWidth)
+	}
+	inner := max(1, boxWidth-2)
+
+	var b strings.Builder
+	b.WriteString("\n")
+	for _, line := range mascot {
+		b.WriteString(leftText(style.Mascot.Render(line)) + "\n")
+	}
+	b.WriteString("\n")
+	title := style.WelcomeTitle.Render("Luna")
+	version := style.WelcomeVersion.Render("v0.0.1")
+	b.WriteString(leftText(title+" "+version) + "\n")
+	b.WriteString(leftText(style.WelcomeSub.Render("AI agent for Chartered Accountants")) + "\n")
+	b.WriteString(leftText(style.WelcomePath.Render(workspacePath())) + "\n")
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("238")).
+		Width(inner).
+		Render(b.String())
+}
+
+func leftText(s string) string { return "  " + s }
+
+func workspacePath() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "~"
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return cwd
+	}
+	rel, err := filepath.Rel(home, cwd)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return cwd
+	}
+	return "~/" + rel
+}
