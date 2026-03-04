@@ -31,16 +31,28 @@ func (m Model) View() string {
 	}
 	var b strings.Builder
 	b.WriteString(renderHeader(m.width) + "\n")
-	b.WriteString(renderWelcomeBox(m.width) + "\n")
 	b.WriteString(m.viewport.View())
 	b.WriteString("\n")
 	b.WriteString(renderComposer(m.width, m.input, m.pickerIdx))
 	return b.String()
 }
 
-// viewportContent builds the full string set as the viewport's content.
-func viewportContent(messages []Message, thinking bool, verbIdx int) string {
+// viewportContent builds the string set as the viewport's content.
+// When there are no messages, the welcome box is shown centered inside the viewport.
+// Once conversation starts, the welcome box is replaced by the message history.
+func viewportContent(messages []Message, thinking bool, verbIdx int, vpHeight, width int) string {
+	if len(messages) == 0 && !thinking {
+		return centeredWelcome(vpHeight, width)
+	}
 	return renderMessages(messages) + renderThinking(thinking, verbIdx)
+}
+
+// centeredWelcome vertically centres the welcome box inside the viewport area.
+func centeredWelcome(vpHeight, width int) string {
+	box := renderWelcomeBox(width)
+	boxH := lipgloss.Height(box)
+	pad := max(0, (vpHeight-boxH)/2)
+	return strings.Repeat("\n", pad) + box
 }
 
 // ── Sections ──────────────────────────────────────────────────────────────────
