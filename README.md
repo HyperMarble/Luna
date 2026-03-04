@@ -1,21 +1,38 @@
-# The Project is highly in development contributions are welcome everything the roadmap, and all is inside the docs folder,
-
 # Luna
 
-AI Agent for Chartered Accountants
+AI agent for Chartered Accountants.
 
 ## Overview
 
-Luna is an AI-powered terminal agent for Chartered Accountants, similar to how Claude Code works for developers. It helps CAs with tax computation, reconciliation, and filing through natural language commands.
+Luna is a terminal-first AI agent for Chartered Accountants, similar in spirit to
+what coding agents are for developers. It helps with computation,
+reconciliation, validation, and filing preparation.
+
+Project docs and roadmap live in `docs/`.
 
 ## Features
 
-- Natural language interface for CA workflows
-- Document parsing (Form 16, 26AS, bank statements)
-- Tax, TDS, and GST computation
-- 26AS reconciliation
-- ITR JSON generation
-- Interactive terminal UI
+- Natural language interface for CA workflows.
+- Terminal UI optimized for fast operator workflows.
+- Tax/GST/TDS support (incremental build-out).
+- Validation and reconciliation pipeline (incremental build-out).
+- JSON-oriented outputs for filing workflows.
+
+## Project Structure
+
+```text
+.
+├── AGENTS.md          # Luna Development Guide
+├── cmd/
+│   └── luna/          # executable entrypoint
+├── docs/              # overview, PRD, status, plans
+├── internal/
+│   └── tui/           # terminal UI architecture
+└── tests/
+    └── tui/           # UI/model tests
+```
+
+Reference implementation (not Luna runtime code) lives in `crush/`.
 
 ## Installation
 
@@ -24,8 +41,7 @@ Luna is an AI-powered terminal agent for Chartered Accountants, similar to how C
 ```bash
 git clone https://github.com/HyperMarble/Luna.git
 cd Luna
-go build -o luna
-sudo cp luna /usr/local/bin/luna
+go install ./cmd/luna
 ```
 
 ### Update
@@ -33,8 +49,7 @@ sudo cp luna /usr/local/bin/luna
 ```bash
 cd Luna
 git pull
-go build -o luna
-sudo cp luna /usr/local/bin/luna
+go install ./cmd/luna
 ```
 
 ## Usage
@@ -43,46 +58,34 @@ sudo cp luna /usr/local/bin/luna
 luna
 ```
 
-### Commands
+## Development
 
-```
-ingest <file>    Parse and ingest document
-compute tax       Compute tax liability
-compute tds       Compute TDS obligations
-compute gst       Compute GST liability
-reconcile 26as   Match 26AS with books
-generate itr      Generate ITR JSON
-status            Show client status
-help              Show available commands
-exit              Exit Luna
+### Build
+
+```bash
+go build ./...
 ```
 
-## Example
+### Test
 
-```
-luna> compute tax for rajesh
-
-Reading...
-  form16.pdf
-  26as.csv
-
-Processing...
-  Computing tax...
-
-Writing...
-  itr1.json
-
-Confirm? [y/n]: y
+```bash
+go test ./...
 ```
 
-## Requirements
+### Format
 
-- Go 1.21 or later
+```bash
+gofmt -w .
+```
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions are welcome. Read `AGENTS.md` first for coding and UI rules.
+
+## Requirements
+
+- Go 1.25+
 
 ## License
 
-MIT License
+MIT License.
