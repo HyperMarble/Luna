@@ -8,6 +8,7 @@ import (
 
 type Message = types.Message
 type UserSubmitMsg = events.UserSubmitMsg
+type AgentResponseMsg = events.AgentResponseMsg
 type LunaStubMsg = events.LunaStubMsg
 
 type Model = model.UI

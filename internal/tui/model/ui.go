@@ -1,8 +1,10 @@
 package model
 
 import (
+	"context"
 	"strings"
 
+	"github.com/HyperMarble/Luna/internal/agent"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,6 +28,7 @@ type UI struct {
 	thinking  bool
 	verbIdx   int
 	pickerIdx int
+	agent     agent.Service
 }
 
 // New returns the initial UI model.
@@ -43,6 +46,7 @@ func New() UI {
 		input:   ti,
 		spinner: sp,
 		layout:  tuilayout.Compute(80),
+		agent:   agent.New(nil),
 	}
 }
 
@@ -80,7 +84,7 @@ func (m UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.messages = append(m.messages, types.Message{Role: "user", Content: msg.Text})
 		m.thinking = true
 
-	case events.LunaStubMsg:
+	case events.AgentResponseMsg:
 		m.thinking = false
 		m.messages = append(m.messages, types.Message{Role: "luna", Content: msg.Text})
 
@@ -181,7 +185,7 @@ func (m *UI) submitText(text string) tea.Cmd {
 	m.input.SetValue("")
 	m.messages = append(m.messages, types.Message{Role: "user", Content: text})
 	m.thinking = true
-	return tea.Batch(stubResponseCmd(), m.spinner.Tick)
+	return tea.Batch(agentResponseCmd(m.agent, text), m.spinner.Tick)
 }
 
 func (m *UI) executeSlash(text string) (tea.Cmd, bool) {
@@ -235,8 +239,14 @@ func helpText() string {
 | ` + "`/exit`" + ` | Exit Luna |`
 }
 
-func stubResponseCmd() tea.Cmd {
-	return func() tea.Msg { return events.LunaStubMsg{Text: "I'm Luna. Agent coming soon."} }
+func agentResponseCmd(svc agent.Service, text string) tea.Cmd {
+	return func() tea.Msg {
+		resp, err := svc.Run(context.Background(), agent.Request{Prompt: text})
+		if err != nil {
+			return events.AgentResponseMsg{Text: "Agent error: " + err.Error()}
+		}
+		return events.AgentResponseMsg{Text: resp.Text}
+	}
 }
 
 func min(a, b int) int {
