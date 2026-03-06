@@ -2,7 +2,10 @@ package style
 
 import "github.com/charmbracelet/lipgloss"
 
-var Mascot = lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
+// Indian flag saffron (#FF9933) for the top blocks, green (#138808) for bottom.
+var MascotTop = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF9933"))
+var MascotMid = lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
+var MascotBot = lipgloss.NewStyle().Foreground(lipgloss.Color("#138808"))
 
 var WelcomeTitle = lipgloss.NewStyle().
 	Bold(true).
@@ -34,10 +37,19 @@ var Divider = lipgloss.NewStyle().Foreground(lipgloss.Color("238"))
 
 var InputPrompt = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 
-var PickerCmd = lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
+var PickerCmd = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF9933"))
 
 var PickerDesc = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 
-var PickerSelected = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
+var PickerSelected = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF9933"))
 
-var PickerSelectedDesc = lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
+var PickerSelectedDesc = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF9933"))
+
+// BadgeFree is shown next to free-tier providers in the model picker.
+var BadgeFree = lipgloss.NewStyle().Foreground(lipgloss.Color("#138808"))
+
+// BadgeLocked is shown next to paid providers without a saved API key.
+var BadgeLocked = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+
+// BadgeUnlocked is shown next to paid providers that have a saved API key.
+var BadgeUnlocked = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF9933"))

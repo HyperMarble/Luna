@@ -8,3 +8,18 @@ type AgentResponseMsg struct{ Text string }
 
 // LunaStubMsg is kept as an alias for compatibility with current tests/callers.
 type LunaStubMsg = AgentResponseMsg
+
+// ModelChangedMsg is sent when the user selects a new provider/model.
+type ModelChangedMsg struct {
+	Provider string
+	ModelID  string
+	Label    string
+}
+
+// SaveAPIKeyMsg is returned by the tea.Cmd that writes an API key to disk.
+// Err is non-nil if the write failed.
+type SaveAPIKeyMsg struct {
+	EnvKey string
+	Value  string
+	Err    error
+}
