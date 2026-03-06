@@ -12,11 +12,14 @@ func NewRegistry() *Registry {
 	return &Registry{tools: make(map[ToolName]Tool)}
 }
 
-// NewDefaultRegistry returns the Luna v1 tool set as stubs.
+// NewDefaultRegistry returns the Luna v1 tool set.
 func NewDefaultRegistry() *Registry {
 	r := NewRegistry()
+	r.Register(NewWebFetch())
 	for _, name := range DefaultToolNames() {
-		r.Register(NewStub(name))
+		if _, ok := r.Get(name); !ok {
+			r.Register(NewStub(name))
+		}
 	}
 	return r
 }
