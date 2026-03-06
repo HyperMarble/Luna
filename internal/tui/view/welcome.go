@@ -10,12 +10,16 @@ import (
 	"github.com/HyperMarble/Luna/internal/tui/style"
 )
 
+// mascot lines — 0-1 top blocks (saffron), 2-5 middle (white), 6-7 bottom blocks (green)
 var mascot = []string{
-	"  ███ ███  ",
-	"██       ██",
-	"██  ^ ^  ██",
-	"██       ██",
-	"  ███ ███  ",
+	"  ████ ████  ", // 0 — top saffron
+	"  ████ ████  ", // 1 — top saffron
+	"███       ███", // 2 — mid white
+	"██   ^ ^   ██", // 3 — mid white
+	"██         ██", // 4 — mid white
+	"███       ███", // 5 — mid white
+	"  ████ ████  ", // 6 — bot green
+	"  ████ ████  ", // 7 — bot green
 }
 
 func renderWelcomeBox(width int) string {
@@ -30,8 +34,17 @@ func renderWelcomeBox(width int) string {
 
 	var b strings.Builder
 	b.WriteString("\n")
-	for _, line := range mascot {
-		b.WriteString(leftText(style.Mascot.Render(line)) + "\n")
+	for i, line := range mascot {
+		var s lipgloss.Style
+		switch {
+		case i <= 1:
+			s = style.MascotTop
+		case i >= 6:
+			s = style.MascotBot
+		default:
+			s = style.MascotMid
+		}
+		b.WriteString(leftText(s.Render(line)) + "\n")
 	}
 	b.WriteString("\n")
 	title := style.WelcomeTitle.Render("Luna")
@@ -40,11 +53,13 @@ func renderWelcomeBox(width int) string {
 	b.WriteString(leftText(style.WelcomeSub.Render("AI agent for Chartered Accountants")) + "\n")
 	b.WriteString(leftText(style.WelcomePath.Render(workspacePath())) + "\n")
 
-	return lipgloss.NewStyle().
+	box := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("238")).
 		Width(inner).
 		Render(b.String())
+
+	return box
 }
 
 func leftText(s string) string { return "  " + s }
