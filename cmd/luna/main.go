@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/HyperMarble/Luna/internal/config"
 	"github.com/HyperMarble/Luna/internal/tui"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -16,6 +17,10 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "update" {
 		runUpdate()
 		return
+	}
+
+	if err := config.Load(); err != nil {
+		fmt.Fprintf(os.Stderr, "luna: config: %v\n", err)
 	}
 
 	p := tea.NewProgram(tui.NewModel(), tea.WithAltScreen())
