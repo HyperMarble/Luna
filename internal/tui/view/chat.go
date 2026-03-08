@@ -63,7 +63,7 @@ func renderLunaMsg(content string, width int) string {
 	if len(lines) > 0 {
 		b.WriteString(bullet + style.ResponseText.Render(strings.TrimSpace(lines[0])) + "\n")
 		if len(lines) > 1 && strings.TrimSpace(lines[1]) != "" {
-			b.WriteString(strings.TrimRight(lines[1], "\n") + "\n")
+			b.WriteString(strings.Trim(lines[1], "\n") + "\n")
 		}
 	}
 	return b.String()
