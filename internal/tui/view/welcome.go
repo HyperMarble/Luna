@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/HyperMarble/Luna/internal/tui/style"
 )
@@ -21,6 +21,9 @@ var mascot = []string{
 	"  ████ ████  ", // 6 — bot green
 	"  ████ ████  ", // 7 — bot green
 }
+
+// RenderWelcomeBox is the exported entry point used by Init().
+func RenderWelcomeBox(width int) string { return renderWelcomeBox(width) }
 
 func renderWelcomeBox(width int) string {
 	if width == 0 {

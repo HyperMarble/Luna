@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/HyperMarble/Luna/internal/agent"
 	"github.com/HyperMarble/Luna/internal/config"
@@ -17,6 +17,9 @@ const (
 	pickerStateAPIKey      = 2
 	pickerStateCustomModel = 3
 )
+
+// RenderModelPicker is the exported version used by ui.go's View().
+func RenderModelPicker(s State) string { return renderModelPicker(s) }
 
 // renderModelPicker dispatches to the correct sub-view based on picker state.
 func renderModelPicker(s State) string {

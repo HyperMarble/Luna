@@ -3,18 +3,36 @@ package view
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/lipgloss/v2"
 
 	"github.com/HyperMarble/Luna/internal/tui/slash"
 	"github.com/HyperMarble/Luna/internal/tui/style"
+	"github.com/HyperMarble/Luna/internal/tui/types"
 )
 
-func renderComposer(width int, input textinput.Model, pickerIdx int) string {
-	var b strings.Builder
-	b.WriteString(style.Divider.Render(strings.Repeat("─", width)) + "\n")
-	b.WriteString(style.InputPrompt.Render("> ") + input.View())
+func thinkingVerb(verbIdx int) string {
+	return types.ThinkingVerbs[verbIdx%len(types.ThinkingVerbs)]
+}
 
+func renderComposer(width int, input textinput.Model, pickerIdx int) string {
+	return renderComposerFull(width, input, pickerIdx, false, 0)
+}
+
+func renderComposerThinking(width int, verbIdx int) string {
+	return renderComposerFull(width, textinput.Model{}, 0, true, verbIdx)
+}
+
+func renderComposerFull(width int, input textinput.Model, pickerIdx int, thinking bool, verbIdx int) string {
+	var b strings.Builder
+	dividerWidth := max(0, width-2)
+	b.WriteString(style.Divider.Render(strings.Repeat("─", dividerWidth)) + "\n")
+	if thinking {
+		verb := thinkingVerb(verbIdx)
+		b.WriteString(style.Thinking.Render("  * " + verb + "…"))
+		return b.String()
+	}
+	b.WriteString(style.InputPrompt.Render("> ") + input.View())
 	if val := input.Value(); strings.HasPrefix(val, "/") {
 		b.WriteString("\n" + renderPicker(slash.Filtered(val), pickerIdx, width))
 	}

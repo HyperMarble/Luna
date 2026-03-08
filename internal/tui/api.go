@@ -16,3 +16,5 @@ type Model = model.UI
 func NewModel() Model {
 	return model.New()
 }
+
+var MouseEventFilter = model.MouseEventFilter

@@ -1,6 +1,6 @@
 package style
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 // Indian flag saffron (#FF9933) for the top blocks, green (#138808) for bottom.
 var MascotTop = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF9933"))

@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/HyperMarble/Luna/internal/agent"
 	"github.com/HyperMarble/Luna/internal/config"
@@ -34,11 +34,12 @@ type UI struct {
 	input  textinput.Model
 	layout tuilayout.UI
 
-	spinner   spinner.Model
-	messages  []types.Message
-	thinking  bool
-	verbIdx   int
-	pickerIdx int
+	spinner      spinner.Model
+	messages     []types.Message
+	thinking     bool
+	verbIdx      int
+	pickerIdx    int
+	scrollOffset int // lines scrolled up from bottom (0 = live)
 
 	// Model picker tree.
 	modelPickerOpen    bool
@@ -61,7 +62,7 @@ func New() UI {
 	ti.Focus()
 	ti.CharLimit = 2000
 	ti.Prompt = ""
-	ti.Width = 76 // Updated on WindowSizeMsg.
+	ti.SetWidth(76) // Updated on WindowSizeMsg.
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -88,7 +89,7 @@ func New() UI {
 	}
 }
 
-// Init starts the cursor blink when the program launches.
+// Init starts cursor blink when the program launches.
 func (m UI) Init() tea.Cmd { return textinput.Blink }
 
 // Input exposes the text input (used in tests).
@@ -106,10 +107,9 @@ func (m UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.layout = tuilayout.Compute(msg.Width)
-		m.input.Width = max(10, m.layout.ComposerWidth-4)
-		cmds = append(cmds, tea.ClearScreen)
+		m.input.SetWidth(max(10, m.layout.ComposerWidth-4))
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		cmd, done := m.onKey(msg)
 		if done {
 			return m, cmd
@@ -118,22 +118,15 @@ func (m UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 
-	case events.UserSubmitMsg:
-		m.messages = append(m.messages, types.Message{Role: "user", Content: msg.Text})
-		m.thinking = true
-
 	case events.AgentResponseMsg:
 		m.thinking = false
-		m.messages = append(m.messages, types.Message{Role: "luna", Content: msg.Text})
+		m.addMsg("assistant", msg.Text)
+		return m, nil
 
 	case events.SaveAPIKeyMsg:
 		if msg.Err != nil {
 			m.closePicker()
-			m.messages = append(m.messages, types.Message{
-				Role:    "luna",
-				Content: "Failed to save API key: " + msg.Err.Error(),
-			})
-			return m, nil
+			m.addMsg("assistant", "Failed to save API key: "+msg.Err.Error())
 		}
 		// Expand the newly-unlocked provider and move to model selection.
 		providers := agent.Providers()
@@ -147,6 +140,14 @@ func (m UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.modelPickerState = pickerStateModels
 		m.modelPickerModIdx = 0
 		m.apiKeyInput.SetValue("")
+
+	case tea.MouseWheelMsg:
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			m.scrollOffset += 3
+		case tea.MouseWheelDown:
+			m.scrollOffset = max(0, m.scrollOffset-3)
+		}
 
 	case spinner.TickMsg:
 		if m.thinking {
@@ -176,9 +177,70 @@ func (m UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// View renders the full UI.
-func (m UI) View() string {
-	return view.Render(view.State{
+// View renders the full alt-screen. Layout:
+//
+//	body   — welcome box + messages, scrollable, grows from top
+//	footer — divider + composer, sits directly below last message
+//	blank  — remaining rows padded so BubbleTea's diff renderer sees exactly m.height lines
+func (m UI) View() tea.View {
+	if m.height == 0 {
+		v := tea.NewView("")
+		v.AltScreen = true
+		v.MouseMode = tea.MouseModeCellMotion
+		return v
+	}
+
+	state := m.viewState()
+
+	// --- footer: render first so we know its fixed height ---
+	footer := view.RenderFooter(state)
+	footerLines := view.SplitLines(footer)
+	fh := len(footerLines)
+
+	// --- body region: everything above the footer ---
+	bh := max(0, m.height-fh)
+
+	var bodyRaw string
+	if m.modelPickerOpen {
+		bodyRaw = view.RenderModelPicker(state)
+	} else {
+		bodyRaw = view.RenderBodyContent(state)
+	}
+	bodyLines := view.SplitLines(bodyRaw)
+
+	// Strip trailing blank lines from raw body.
+	for len(bodyLines) > 0 && bodyLines[len(bodyLines)-1] == "" {
+		bodyLines = bodyLines[:len(bodyLines)-1]
+	}
+
+	// When content overflows the body region, clip from the top (scroll support).
+	// scrollOffset=0 shows the most-recent content; positive scrolls toward older.
+	if len(bodyLines) > bh {
+		maxOffset := len(bodyLines) - bh
+		offset := min(m.scrollOffset, maxOffset)
+		end := len(bodyLines) - offset
+		start := max(0, end-bh)
+		bodyLines = bodyLines[start:end]
+	}
+
+	// Composer sits right below the last message (not pinned to bottom).
+	// Pad the combined output to m.height so BubbleTea's diff renderer
+	// never sees stale rows from a previous frame.
+	allLines := make([]string, 0, m.height)
+	allLines = append(allLines, bodyLines...)
+	allLines = append(allLines, footerLines...)
+	for len(allLines) < m.height {
+		allLines = append(allLines, "")
+	}
+
+	v := tea.NewView(strings.Join(allLines, "\n"))
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
+	return v
+}
+
+func (m UI) viewState() view.State {
+	return view.State{
 		Width:              m.width,
 		Height:             m.height,
 		Layout:             m.layout,
@@ -196,10 +258,10 @@ func (m UI) View() string {
 		APIKeyProvider:     m.apiKeyProvider,
 		CustomModelInput:   m.customModelInput,
 		ActiveModel:        m.activeModel,
-	})
+	}
 }
 
-func (m *UI) onKey(msg tea.KeyMsg) (tea.Cmd, bool) {
+func (m *UI) onKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	if m.modelPickerOpen {
 		switch m.modelPickerState {
 		case pickerStateProviders:
@@ -216,8 +278,22 @@ func (m *UI) onKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 	switch msg.String() {
 	case "ctrl+c":
 		return tea.Quit, true
-	case "up", "down":
-		m.movePicker(msg.String())
+	case "up":
+		if strings.HasPrefix(m.input.Value(), "/") {
+			m.movePicker("up")
+		} else {
+			m.scrollOffset++
+		}
+	case "down":
+		if strings.HasPrefix(m.input.Value(), "/") {
+			m.movePicker("down")
+		} else {
+			m.scrollOffset = max(0, m.scrollOffset-1)
+		}
+	case "pgup":
+		m.scrollOffset += max(1, m.height/2)
+	case "pgdown":
+		m.scrollOffset = max(0, m.scrollOffset-max(1, m.height/2))
 	case "tab":
 		m.completePicker()
 	case "esc":
@@ -232,7 +308,7 @@ func (m *UI) onKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 	return nil, false
 }
 
-func (m *UI) onProvidersKey(msg tea.KeyMsg) (tea.Cmd, bool) {
+func (m *UI) onProvidersKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	providers := agent.Providers()
 	switch msg.String() {
 	case "ctrl+c":
@@ -265,7 +341,7 @@ func (m *UI) onProvidersKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 	return nil, true
 }
 
-func (m *UI) onModelsKey(msg tea.KeyMsg) (tea.Cmd, bool) {
+func (m *UI) onModelsKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	providers := agent.Providers()
 	var models []agent.ModelEntry
 	if m.expandedProv >= 0 && m.expandedProv < len(providers) {
@@ -293,14 +369,14 @@ func (m *UI) onModelsKey(msg tea.KeyMsg) (tea.Cmd, bool) {
 				m.customModelInput.Focus()
 				m.modelPickerState = pickerStateCustomModel
 			} else {
-				m.selectModel(e)
+				return m.selectModel(e), true
 			}
 		}
 	}
 	return nil, true
 }
 
-func (m *UI) onCustomModelInput(msg tea.KeyMsg) (tea.Cmd, bool) {
+func (m *UI) onCustomModelInput(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	var keyCmd tea.Cmd
 	m.customModelInput, keyCmd = m.customModelInput.Update(msg)
 
@@ -324,14 +400,14 @@ func (m *UI) onCustomModelInput(msg tea.KeyMsg) (tea.Cmd, bool) {
 					Free:        prov.Free,
 					EnvKey:      prov.EnvKey,
 				}
-				m.selectModel(e)
+				return tea.Batch(keyCmd, m.selectModel(e)), true
 			}
 		}
 	}
 	return keyCmd, true
 }
 
-func (m *UI) onAPIKeyInput(msg tea.KeyMsg) (tea.Cmd, bool) {
+func (m *UI) onAPIKeyInput(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	// Update the textinput here because key messages return done=true and
 	// bypass the generic update at the bottom of Update().
 	var keyCmd tea.Cmd
@@ -352,14 +428,12 @@ func (m *UI) onAPIKeyInput(msg tea.KeyMsg) (tea.Cmd, bool) {
 	return keyCmd, true
 }
 
-func (m *UI) selectModel(e agent.ModelEntry) {
+func (m *UI) selectModel(e agent.ModelEntry) tea.Cmd {
 	m.activeModel = e.ModelID
 	m.closePicker()
 	m.agent = agent.NewWithModel(string(e.Provider), e.ModelID)
-	m.messages = append(m.messages, types.Message{
-		Role:    "luna",
-		Content: "Switched to **" + e.ModelLabel + "** (" + e.DisplayName + ")",
-	})
+	m.addMsg("assistant", "Switched to **"+e.ModelLabel+"** ("+e.DisplayName+")")
+	return nil
 }
 
 func (m *UI) closePicker() {
@@ -421,8 +495,10 @@ func (m *UI) onEnter() (tea.Cmd, bool) {
 
 func (m *UI) submitText(text string) tea.Cmd {
 	m.input.SetValue("")
-	m.messages = append(m.messages, types.Message{Role: "user", Content: text})
 	m.thinking = true
+	m.scrollOffset = 0 // snap to bottom when user sends a message
+	m.addMsg("user", text)
+
 	return tea.Batch(agentResponseCmd(m.agent, text), m.spinner.Tick)
 }
 
@@ -436,33 +512,38 @@ func (m *UI) executeSlash(text string) (tea.Cmd, bool) {
 	return m.handleSlash(text), true
 }
 
+func (m *UI) addMsg(role, content string) {
+	m.messages = append(m.messages, types.Message{Role: role, Content: content})
+
+}
+
 func (m *UI) handleSlash(cmd string) tea.Cmd {
 	switch cmd {
 	case "/exit":
-		m.messages = append(m.messages, types.Message{Role: "user", Content: "/exit"})
-		m.messages = append(m.messages, types.Message{Role: "luna", Content: "Goodbye! Thanks for using Luna."})
+		m.addMsg("user", "/exit")
+		m.addMsg("assistant", "Goodbye! Thanks for using Luna.")
 		return tea.Quit
 	case "/clear":
 		m.thinking = false
-		m.messages = []types.Message{{Role: "luna", Content: "Conversation cleared."}}
+		m.messages = nil
+	
 		return nil
 	case "/help":
-		m.messages = append(m.messages, types.Message{Role: "user", Content: "/help"})
-		m.messages = append(m.messages, types.Message{Role: "luna", Content: helpText()})
+		m.addMsg("user", "/help")
+		m.addMsg("assistant", helpText())
 		return nil
 	case "/model":
-		m.input.SetValue("")
 		m.modelPickerOpen = true
 		m.modelPickerState = pickerStateProviders
 		m.modelPickerProvIdx = 0
 		return nil
 	case "/plugins":
-		m.messages = append(m.messages, types.Message{Role: "user", Content: "/plugins"})
-		m.messages = append(m.messages, types.Message{Role: "luna", Content: "No plugins installed yet.\n\nPlugin system coming soon."})
+		m.addMsg("user", "/plugins")
+		m.addMsg("assistant", "No plugins installed yet.\n\nPlugin system coming soon.")
 		return nil
 	default:
-		m.messages = append(m.messages, types.Message{Role: "user", Content: cmd})
-		m.messages = append(m.messages, types.Message{Role: "luna", Content: "Unknown command: `" + cmd + "`\n\nType `/help` to see available commands."})
+		m.addMsg("user", cmd)
+		m.addMsg("assistant", "Unknown command: `"+cmd+"`\n\nType `/help` to see available commands.")
 		return nil
 	}
 }
@@ -496,16 +577,3 @@ func saveAPIKeyCmd(envKey, value string) tea.Cmd {
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
