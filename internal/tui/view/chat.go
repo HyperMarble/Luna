@@ -3,6 +3,7 @@ package view
 import (
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/glamour"
 
 	"github.com/HyperMarble/Luna/internal/tui/style"
@@ -22,10 +23,10 @@ func renderMessages(messages []types.Message, width int) string {
 }
 
 // RenderThinking is exported for use in tests / external packages.
-func RenderThinking(thinking bool, idx int) string { return renderThinking(thinking, idx) }
+func RenderThinking(thinking bool, idx int) string { return renderThinking(thinking, idx, 0) }
 
 func renderUserMsg(content string) string {
-	return style.UserPill.Render("> "+content) + "\n\n"
+	return style.UserPill.Render("> "+content) + "\n"
 }
 
 // maxMsgWidth caps message width for readability (mirrors crush's maxTextWidth).
@@ -53,24 +54,61 @@ func renderLunaMsg(content string, width int) string {
 		rendered = content + "\n"
 	}
 
-	lines := strings.SplitN(strings.TrimLeft(rendered, "\n"), "\n", 2)
+	// Trim leading and trailing blank lines glamour adds.
+	rendered = strings.TrimSpace(rendered)
+	lines := strings.SplitN(rendered, "\n", 2)
 	bullet := style.ResponseBullet.Render("● ")
 
 	var b strings.Builder
 	if len(lines) > 0 {
 		b.WriteString(bullet + style.ResponseText.Render(strings.TrimSpace(lines[0])) + "\n")
 		if len(lines) > 1 && strings.TrimSpace(lines[1]) != "" {
-			b.WriteString(lines[1])
+			b.WriteString(strings.TrimRight(lines[1], "\n") + "\n")
 		}
 	}
-	b.WriteString("\n")
 	return b.String()
 }
 
-func renderThinking(thinking bool, verbIdx int) string {
+// saffron shimmer palette: peak → dim
+var saffronShades = []string{
+	"#FFD580", // peak (bright gold)
+	"#FF9933", // saffron
+	"#CC7A29", // mid
+	"#7a4510", // dim
+}
+
+func renderThinking(thinking bool, verbIdx int, wordIdx int) string {
 	if !thinking {
 		return ""
 	}
-	verb := types.ThinkingVerbs[verbIdx%len(types.ThinkingVerbs)]
-	return style.Thinking.Render("* "+verb+"…") + "\n\n"
+	word := types.ThinkingVerbs[wordIdx%len(types.ThinkingVerbs)]
+	return "  " + shimmerWord(word+"…", verbIdx) + "\n\n"
+}
+
+// shimmerWord sweeps a saffron bright spot left-to-right across a single word.
+func shimmerWord(word string, tick int) string {
+	runes := []rune(word)
+	n := len(runes)
+	if n == 0 {
+		return ""
+	}
+
+	// pos travels 0 → n+4 then wraps; +4 pause at end before next word swap
+	pos := tick % (n + 4)
+
+	var b strings.Builder
+	for i, ch := range runes {
+		dist := pos - i
+		if dist < 0 {
+			dist = -dist
+		}
+		var hex string
+		if dist < len(saffronShades) {
+			hex = saffronShades[dist]
+		} else {
+			hex = "#4a2d0a" // base dim saffron
+		}
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(hex)).Render(string(ch)))
+	}
+	return b.String()
 }

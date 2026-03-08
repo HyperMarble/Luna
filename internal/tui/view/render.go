@@ -17,8 +17,9 @@ type State struct {
 	Layout     tuilayout.UI
 	Input      textinput.Model
 	Messages   []types.Message
-	Thinking   bool
-	VerbIdx    int
+	Thinking        bool
+	VerbIdx         int
+	ThinkingWordIdx int
 	BodyView   string
 	FooterView string
 
@@ -67,13 +68,12 @@ func RenderBodyContent(s State) string {
 
 	var b strings.Builder
 	b.WriteString(renderWelcomeBox(layout.WelcomeWidth))
-	b.WriteString("\n")
 
 	if s.ModelPickerOpen {
 		b.WriteString(renderModelPicker(s))
 	} else {
 		b.WriteString(renderMessages(s.Messages, layout.ComposerWidth))
-		b.WriteString(renderThinking(s.Thinking, s.VerbIdx))
+		b.WriteString(renderThinking(s.Thinking, s.VerbIdx, s.ThinkingWordIdx))
 	}
 
 	return b.String()
