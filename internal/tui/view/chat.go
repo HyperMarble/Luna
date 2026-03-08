@@ -26,7 +26,7 @@ func renderMessages(messages []types.Message, width int) string {
 func RenderThinking(thinking bool, idx int) string { return renderThinking(thinking, idx, 0) }
 
 func renderUserMsg(content string) string {
-	return style.UserPill.Render("> "+content) + "\n"
+	return style.UserPill.Render("> "+content) + "\n\n"
 }
 
 // maxMsgWidth caps message width for readability (mirrors crush's maxTextWidth).
@@ -54,18 +54,17 @@ func renderLunaMsg(content string, width int) string {
 		rendered = content + "\n"
 	}
 
-	// Trim leading and trailing blank lines glamour adds.
-	rendered = strings.TrimSpace(rendered)
-	lines := strings.SplitN(rendered, "\n", 2)
+	lines := strings.SplitN(strings.TrimLeft(rendered, "\n"), "\n", 2)
 	bullet := style.ResponseBullet.Render("● ")
 
 	var b strings.Builder
 	if len(lines) > 0 {
 		b.WriteString(bullet + style.ResponseText.Render(strings.TrimSpace(lines[0])) + "\n")
 		if len(lines) > 1 && strings.TrimSpace(lines[1]) != "" {
-			b.WriteString(strings.Trim(lines[1], "\n") + "\n")
+			b.WriteString(lines[1])
 		}
 	}
+	b.WriteString("\n")
 	return b.String()
 }
 

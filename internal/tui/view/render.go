@@ -68,6 +68,7 @@ func RenderBodyContent(s State) string {
 
 	var b strings.Builder
 	b.WriteString(renderWelcomeBox(layout.WelcomeWidth))
+	b.WriteString("\n")
 
 	if s.ModelPickerOpen {
 		b.WriteString(renderModelPicker(s))
