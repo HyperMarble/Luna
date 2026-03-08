@@ -8,6 +8,8 @@ import (
 // Service is the app-facing agent interface.
 type Service interface {
 	Run(context.Context, Request) (Response, error)
+	// Stream calls onChunk for each token as it arrives.
+	Stream(context.Context, Request, func(string)) error
 }
 
 type service struct {
@@ -35,4 +37,12 @@ func (s *service) Run(ctx context.Context, req Request) (Response, error) {
 		return Response{}, ErrEmptyPrompt
 	}
 	return s.provider.Generate(ctx, req)
+}
+
+// Stream validates the request and streams tokens via onChunk.
+func (s *service) Stream(ctx context.Context, req Request, onChunk func(string)) error {
+	if strings.TrimSpace(req.Prompt) == "" {
+		return ErrEmptyPrompt
+	}
+	return s.provider.StreamGenerate(ctx, req, onChunk)
 }

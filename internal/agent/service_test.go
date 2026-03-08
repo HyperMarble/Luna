@@ -45,3 +45,8 @@ type testProvider struct{}
 func (testProvider) Generate(_ context.Context, req Request) (Response, error) {
 	return Response{Text: "ok: " + req.Prompt}, nil
 }
+
+func (testProvider) StreamGenerate(_ context.Context, req Request, onChunk func(string)) error {
+	onChunk("ok: " + req.Prompt)
+	return nil
+}

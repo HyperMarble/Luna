@@ -3,11 +3,17 @@ package events
 // UserSubmitMsg is sent when the user submits a message programmatically.
 type UserSubmitMsg struct{ Text string }
 
-// AgentResponseMsg carries a text response returned by the agent service.
+// AgentResponseMsg carries a complete text response (non-streaming fallback).
 type AgentResponseMsg struct{ Text string }
 
 // LunaStubMsg is kept as an alias for compatibility with current tests/callers.
 type LunaStubMsg = AgentResponseMsg
+
+// AgentChunkMsg carries a single streamed token from the agent.
+type AgentChunkMsg struct{ Text string }
+
+// AgentDoneMsg signals that the stream has ended.
+type AgentDoneMsg struct{ Err error }
 
 // ModelChangedMsg is sent when the user selects a new provider/model.
 type ModelChangedMsg struct {

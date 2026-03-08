@@ -18,21 +18,20 @@ func NewClaudeProvider() Provider {
 	return &claudeProvider{client: anthropic.NewClient()}
 }
 
-func (p *claudeProvider) Generate(ctx context.Context, req Request) (Response, error) {
-	msg, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
+func (p *claudeProvider) messageParams(prompt string) anthropic.MessageNewParams {
+	return anthropic.MessageNewParams{
 		Model:     anthropic.ModelClaude3_7SonnetLatest,
 		MaxTokens: 4096,
-		System: []anthropic.TextBlockParam{
-			{Text: systemPrompt},
-		},
-		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(anthropic.NewTextBlock(req.Prompt)),
-		},
-	})
+		System:    []anthropic.TextBlockParam{{Text: systemPrompt}},
+		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(prompt))},
+	}
+}
+
+func (p *claudeProvider) Generate(ctx context.Context, req Request) (Response, error) {
+	msg, err := p.client.Messages.New(ctx, p.messageParams(req.Prompt))
 	if err != nil {
 		return Response{}, fmt.Errorf("claude: %w", err)
 	}
-
 	var text string
 	for _, block := range msg.Content {
 		if tb, ok := block.AsAny().(anthropic.TextBlock); ok {
@@ -40,6 +39,19 @@ func (p *claudeProvider) Generate(ctx context.Context, req Request) (Response, e
 		}
 	}
 	return Response{Text: text}, nil
+}
+
+func (p *claudeProvider) StreamGenerate(ctx context.Context, req Request, onChunk func(string)) error {
+	stream := p.client.Messages.NewStreaming(ctx, p.messageParams(req.Prompt))
+	for stream.Next() {
+		event := stream.Current()
+		if cb, ok := event.AsAny().(anthropic.ContentBlockDeltaEvent); ok {
+			if delta, ok := cb.Delta.AsAny().(anthropic.TextDelta); ok {
+				onChunk(delta.Text)
+			}
+		}
+	}
+	return stream.Err()
 }
 
 const systemPrompt = `You are Luna, an AI assistant for Chartered Accountants in India.

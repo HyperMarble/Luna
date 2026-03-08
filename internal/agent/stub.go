@@ -1,6 +1,10 @@
 package agent
 
-import "context"
+import (
+	"context"
+	"strings"
+	"time"
+)
 
 const stubText = "I'm Luna. Agent coming soon."
 
@@ -11,7 +15,14 @@ func NewStubProvider() Provider {
 	return stubProvider{}
 }
 
-// Generate returns a fixed placeholder response.
 func (stubProvider) Generate(_ context.Context, _ Request) (Response, error) {
 	return Response{Text: stubText}, nil
+}
+
+func (stubProvider) StreamGenerate(_ context.Context, _ Request, onChunk func(string)) error {
+	for _, word := range strings.Fields(stubText) {
+		onChunk(word + " ")
+		time.Sleep(60 * time.Millisecond)
+	}
+	return nil
 }
