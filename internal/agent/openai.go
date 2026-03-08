@@ -89,7 +89,7 @@ func (p *openAIProvider) Generate(ctx context.Context, req Request) (Response, e
 		return Response{}, fmt.Errorf("openai: %s", out.Error.Message)
 	}
 	if len(out.Choices) == 0 {
-		return Response{}, fmt.Errorf("openai: empty response")
+		return Response{}, fmt.Errorf("openai: empty response (status %d): %s", resp.StatusCode, string(raw))
 	}
 	return Response{Text: out.Choices[0].Message.Content}, nil
 }

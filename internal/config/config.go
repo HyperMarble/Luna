@@ -3,17 +3,21 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/pelletier/go-toml/v2"
 )
 
-// Providers holds persisted API keys for all paid providers.
+// Providers holds persisted API keys for all supported providers.
 type Providers struct {
-	AnthropicAPIKey string `toml:"anthropic_api_key"`
-	OpenAIAPIKey    string `toml:"openai_api_key"`
-	GeminiAPIKey    string `toml:"gemini_api_key"`
-	OllamaHost      string `toml:"ollama_host"`
+	AnthropicAPIKey  string `toml:"anthropic_api_key"`
+	OpenAIAPIKey     string `toml:"openai_api_key"`
+	GeminiAPIKey     string `toml:"gemini_api_key"`
+	GroqAPIKey       string `toml:"groq_api_key"`
+	CerebrasAPIKey   string `toml:"cerebras_api_key"`
+	OpenRouterAPIKey string `toml:"openrouter_api_key"`
+	OllamaHost       string `toml:"ollama_host"`
 }
 
 // Config is the top-level config file structure.
@@ -35,11 +39,14 @@ func configPath() (string, error) {
 	return filepath.Join(home, ".luna", "config.toml"), nil
 }
 
-// Load reads ~/.luna/config.toml into the package-level singleton.
-// A missing file is treated as an empty config, not an error.
+// Load reads ~/.luna/config.toml into the package-level singleton and also
+// loads a .env file from the current working directory if one exists.
+// Missing files are treated as empty configs, not errors.
 func Load() error {
 	mu.Lock()
 	defer mu.Unlock()
+
+	loadDotEnv()
 
 	path, err := configPath()
 	if err != nil {
@@ -59,7 +66,24 @@ func Load() error {
 		return err
 	}
 	current = c
+
+	// Inject stored keys into the process environment so AutoDetectProvider
+	// (which uses os.Getenv) picks them up. Shell env vars take precedence.
+	injectEnv("ANTHROPIC_API_KEY", c.Providers.AnthropicAPIKey)
+	injectEnv("OPENAI_API_KEY", c.Providers.OpenAIAPIKey)
+	injectEnv("GEMINI_API_KEY", c.Providers.GeminiAPIKey)
+	injectEnv("GROQ_API_KEY", c.Providers.GroqAPIKey)
+	injectEnv("CEREBRAS_API_KEY", c.Providers.CerebrasAPIKey)
+	injectEnv("OPENROUTER_API_KEY", c.Providers.OpenRouterAPIKey)
+	injectEnv("OLLAMA_HOST", c.Providers.OllamaHost)
 	return nil
+}
+
+// injectEnv sets an env var only if it is not already set in the shell.
+func injectEnv(key, value string) {
+	if value != "" && os.Getenv(key) == "" {
+		os.Setenv(key, value)
+	}
 }
 
 // Get returns the current config merged with environment variables.
@@ -98,6 +122,12 @@ func SetKey(envKey, value string) error {
 		current.Providers.OpenAIAPIKey = value
 	case "GEMINI_API_KEY":
 		current.Providers.GeminiAPIKey = value
+	case "GROQ_API_KEY":
+		current.Providers.GroqAPIKey = value
+	case "CEREBRAS_API_KEY":
+		current.Providers.CerebrasAPIKey = value
+	case "OPENROUTER_API_KEY":
+		current.Providers.OpenRouterAPIKey = value
 	case "OLLAMA_HOST":
 		current.Providers.OllamaHost = value
 	}
@@ -121,10 +151,46 @@ func KeyForProvider(envKey string) string {
 		return current.Providers.OpenAIAPIKey
 	case "GEMINI_API_KEY":
 		return current.Providers.GeminiAPIKey
+	case "GROQ_API_KEY":
+		return current.Providers.GroqAPIKey
+	case "CEREBRAS_API_KEY":
+		return current.Providers.CerebrasAPIKey
+	case "OPENROUTER_API_KEY":
+		return current.Providers.OpenRouterAPIKey
 	case "OLLAMA_HOST":
 		return current.Providers.OllamaHost
 	}
 	return ""
+}
+
+// loadDotEnv reads KEY=VALUE pairs from .env files and injects missing vars.
+// Checks: (1) cwd/.env  (2) ~/.luna/.env
+func loadDotEnv() {
+	candidates := []string{".env"}
+	if home, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, filepath.Join(home, ".luna", ".env"))
+	}
+	for _, path := range candidates {
+		parseDotEnv(path)
+	}
+}
+
+func parseDotEnv(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		injectEnv(strings.TrimSpace(k), strings.Trim(strings.TrimSpace(v), `"'`))
+	}
 }
 
 // save writes current to disk. Caller must hold mu.
