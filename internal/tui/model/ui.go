@@ -39,7 +39,9 @@ type UI struct {
 	thinking     bool
 	verbIdx      int
 	pickerIdx    int
-	scrollOffset int // lines scrolled up from bottom (0 = live)
+	scrollOffset    int          // lines scrolled up from bottom (0 = live)
+	chunkCh         <-chan string // non-nil while streaming
+	thinkingWordIdx int          // which verb to show — incremented each submit
 
 	// Model picker tree.
 	modelPickerOpen    bool
@@ -119,8 +121,25 @@ func (m UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case events.AgentResponseMsg:
+		// Non-streaming fallback (tests / direct calls).
 		m.thinking = false
 		m.addMsg("assistant", msg.Text)
+		return m, nil
+
+	case events.AgentChunkMsg:
+		m.thinking = false
+		if len(m.messages) == 0 || m.messages[len(m.messages)-1].Role != "assistant" {
+			m.messages = append(m.messages, types.Message{Role: "assistant", Content: msg.Text})
+		} else {
+			m.messages[len(m.messages)-1].Content += msg.Text
+		}
+		return m, listenChunk(m.chunkCh)
+
+	case events.AgentDoneMsg:
+		m.chunkCh = nil
+		if msg.Err != nil {
+			m.addMsg("assistant", "Error: "+msg.Err.Error())
+		}
 		return m, nil
 
 	case events.SaveAPIKeyMsg:
@@ -248,6 +267,7 @@ func (m UI) viewState() view.State {
 		Messages:           m.messages,
 		Thinking:           m.thinking,
 		VerbIdx:            m.verbIdx,
+		ThinkingWordIdx:    m.thinkingWordIdx,
 		PickerIndex:        m.pickerIdx,
 		ModelPickerOpen:    m.modelPickerOpen,
 		ModelPickerState:   int(m.modelPickerState),
@@ -496,10 +516,13 @@ func (m *UI) onEnter() (tea.Cmd, bool) {
 func (m *UI) submitText(text string) tea.Cmd {
 	m.input.SetValue("")
 	m.thinking = true
-	m.scrollOffset = 0 // snap to bottom when user sends a message
+	m.scrollOffset = 0
+	m.thinkingWordIdx++
 	m.addMsg("user", text)
 
-	return tea.Batch(agentResponseCmd(m.agent, text), m.spinner.Tick)
+	cmd, ch := agentStreamStart(m.agent, text)
+	m.chunkCh = ch
+	return tea.Batch(cmd, m.spinner.Tick)
 }
 
 func (m *UI) executeSlash(text string) (tea.Cmd, bool) {
@@ -560,13 +583,30 @@ func helpText() string {
 | ` + "`/exit`" + ` | Exit Luna |`
 }
 
-func agentResponseCmd(svc agent.Service, text string) tea.Cmd {
-	return func() tea.Msg {
-		resp, err := svc.Run(context.Background(), agent.Request{Prompt: text})
+// agentStreamStart launches a streaming goroutine and returns the first
+// listenChunk Cmd plus the channel to store in the model.
+func agentStreamStart(svc agent.Service, text string) (tea.Cmd, <-chan string) {
+	ch := make(chan string, 64)
+	go func() {
+		err := svc.Stream(context.Background(), agent.Request{Prompt: text}, func(chunk string) {
+			ch <- chunk
+		})
 		if err != nil {
-			return events.AgentResponseMsg{Text: "Agent error: " + err.Error()}
+			ch <- "\n\n*Error: " + err.Error() + "*"
 		}
-		return events.AgentResponseMsg{Text: resp.Text}
+		close(ch)
+	}()
+	return listenChunk(ch), ch
+}
+
+// listenChunk returns a Cmd that reads one token from the channel.
+func listenChunk(ch <-chan string) tea.Cmd {
+	return func() tea.Msg {
+		text, ok := <-ch
+		if !ok {
+			return events.AgentDoneMsg{}
+		}
+		return events.AgentChunkMsg{Text: text}
 	}
 }
 
