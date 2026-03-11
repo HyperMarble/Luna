@@ -15,6 +15,7 @@ func NewRegistry() *Registry {
 // NewDefaultRegistry returns the Luna v1 tool set.
 func NewDefaultRegistry() *Registry {
 	r := NewRegistry()
+	r.Register(NewWebSearch())
 	r.Register(NewWebFetch())
 	for _, name := range DefaultToolNames() {
 		if _, ok := r.Get(name); !ok {
