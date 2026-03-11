@@ -34,14 +34,15 @@ type UI struct {
 	input  textinput.Model
 	layout tuilayout.UI
 
-	spinner      spinner.Model
-	messages     []types.Message
-	thinking     bool
-	verbIdx      int
-	pickerIdx    int
-	scrollOffset    int          // lines scrolled up from bottom (0 = live)
-	chunkCh         <-chan string // non-nil while streaming
-	thinkingWordIdx int          // which verb to show — incremented each submit
+	spinner         spinner.Model
+	messages        []types.Message
+	thinking        bool
+	verbIdx         int
+	pickerIdx       int
+	scrollOffset    int            // lines scrolled up from bottom (0 = live)
+	chunkCh         <-chan tea.Msg // non-nil while streaming
+	thinkingWordIdx int            // which verb to show — incremented each submit
+	thinkingLabel   string
 
 	// Model picker tree.
 	modelPickerOpen    bool
@@ -123,11 +124,13 @@ func (m UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.AgentResponseMsg:
 		// Non-streaming fallback (tests / direct calls).
 		m.thinking = false
+		m.thinkingLabel = ""
 		m.addMsg("assistant", msg.Text)
 		return m, nil
 
 	case events.AgentChunkMsg:
 		m.thinking = false
+		m.thinkingLabel = ""
 		if len(m.messages) == 0 || m.messages[len(m.messages)-1].Role != "assistant" {
 			m.messages = append(m.messages, types.Message{Role: "assistant", Content: msg.Text})
 		} else {
@@ -137,9 +140,20 @@ func (m UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case events.AgentDoneMsg:
 		m.chunkCh = nil
+		m.thinking = false
+		m.thinkingLabel = ""
 		if msg.Err != nil {
 			m.addMsg("assistant", "Error: "+msg.Err.Error())
 		}
+		return m, nil
+
+	case events.ToolActivityMsg:
+		if msg.Active {
+			m.thinking = true
+			m.thinkingLabel = msg.Label
+			return m, m.spinner.Tick
+		}
+		m.thinkingLabel = ""
 		return m, nil
 
 	case events.SaveAPIKeyMsg:
@@ -268,6 +282,8 @@ func (m UI) viewState() view.State {
 		Thinking:           m.thinking,
 		VerbIdx:            m.verbIdx,
 		ThinkingWordIdx:    m.thinkingWordIdx,
+		ThinkingLabel:      m.thinkingLabel,
+		SpinnerView:        m.spinner.View(),
 		PickerIndex:        m.pickerIdx,
 		ModelPickerOpen:    m.modelPickerOpen,
 		ModelPickerState:   int(m.modelPickerState),
@@ -516,6 +532,7 @@ func (m *UI) onEnter() (tea.Cmd, bool) {
 func (m *UI) submitText(text string) tea.Cmd {
 	m.input.SetValue("")
 	m.thinking = true
+	m.thinkingLabel = ""
 	m.scrollOffset = 0
 	m.thinkingWordIdx++
 	m.addMsg("user", text)
@@ -548,8 +565,10 @@ func (m *UI) handleSlash(cmd string) tea.Cmd {
 		return tea.Quit
 	case "/clear":
 		m.thinking = false
+		m.thinkingLabel = ""
 		m.messages = nil
-	
+		m.agent.Reset()
+
 		return nil
 	case "/help":
 		m.addMsg("user", "/help")
@@ -585,14 +604,24 @@ func helpText() string {
 
 // agentStreamStart launches a streaming goroutine and returns the first
 // listenChunk Cmd plus the channel to store in the model.
-func agentStreamStart(svc agent.Service, text string) (tea.Cmd, <-chan string) {
-	ch := make(chan string, 64)
+func agentStreamStart(svc agent.Service, text string) (tea.Cmd, <-chan tea.Msg) {
+	ch := make(chan tea.Msg, 64)
 	go func() {
-		err := svc.Stream(context.Background(), agent.Request{Prompt: text}, func(chunk string) {
-			ch <- chunk
-		})
+		err := svc.Stream(
+			context.Background(),
+			agent.Request{Prompt: text},
+			func(chunk string) { ch <- events.AgentChunkMsg{Text: chunk} },
+			func(ev agent.Event) {
+				switch ev.Type {
+				case agent.EventToolStart:
+					ch <- events.ToolActivityMsg{Active: true, Label: ev.Detail}
+				case agent.EventToolEnd:
+					ch <- events.ToolActivityMsg{Active: false}
+				}
+			},
+		)
 		if err != nil {
-			ch <- "\n\n*Error: " + err.Error() + "*"
+			ch <- events.AgentChunkMsg{Text: "\n\n*Error: " + err.Error() + "*"}
 		}
 		close(ch)
 	}()
@@ -600,13 +629,13 @@ func agentStreamStart(svc agent.Service, text string) (tea.Cmd, <-chan string) {
 }
 
 // listenChunk returns a Cmd that reads one token from the channel.
-func listenChunk(ch <-chan string) tea.Cmd {
+func listenChunk(ch <-chan tea.Msg) tea.Cmd {
 	return func() tea.Msg {
-		text, ok := <-ch
+		msg, ok := <-ch
 		if !ok {
 			return events.AgentDoneMsg{}
 		}
-		return events.AgentChunkMsg{Text: text}
+		return msg
 	}
 }
 
@@ -616,4 +645,3 @@ func saveAPIKeyCmd(envKey, value string) tea.Cmd {
 		return events.SaveAPIKeyMsg{EnvKey: envKey, Value: value, Err: err}
 	}
 }
-

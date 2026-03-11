@@ -15,6 +15,12 @@ type AgentChunkMsg struct{ Text string }
 // AgentDoneMsg signals that the stream has ended.
 type AgentDoneMsg struct{ Err error }
 
+// ToolActivityMsg updates the tool activity shown while Luna is thinking.
+type ToolActivityMsg struct {
+	Active bool
+	Label  string
+}
+
 // ModelChangedMsg is sent when the user selects a new provider/model.
 type ModelChangedMsg struct {
 	Provider string

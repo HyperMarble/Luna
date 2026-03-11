@@ -23,7 +23,7 @@ func renderMessages(messages []types.Message, width int) string {
 }
 
 // RenderThinking is exported for use in tests / external packages.
-func RenderThinking(thinking bool, idx int) string { return renderThinking(thinking, idx, 0) }
+func RenderThinking(thinking bool, idx int) string { return renderThinking(thinking, idx, 0, "", "") }
 
 func renderUserMsg(content string) string {
 	return style.UserPill.Render("> "+content) + "\n\n"
@@ -76,9 +76,15 @@ var saffronShades = []string{
 	"#7a4510", // dim
 }
 
-func renderThinking(thinking bool, verbIdx int, wordIdx int) string {
+func renderThinking(thinking bool, verbIdx int, wordIdx int, label, spinnerView string) string {
 	if !thinking {
 		return ""
+	}
+	if label != "" {
+		if spinnerView == "" {
+			spinnerView = "◌"
+		}
+		return "  " + spinnerView + " " + label + "\n\n"
 	}
 	word := types.ThinkingVerbs[wordIdx%len(types.ThinkingVerbs)]
 	return "  " + shimmerWord(word+"…", verbIdx) + "\n\n"

@@ -12,16 +12,18 @@ import (
 
 // State is the immutable input required for rendering.
 type State struct {
-	Width      int
-	Height     int
-	Layout     tuilayout.UI
-	Input      textinput.Model
-	Messages   []types.Message
+	Width           int
+	Height          int
+	Layout          tuilayout.UI
+	Input           textinput.Model
+	Messages        []types.Message
 	Thinking        bool
 	VerbIdx         int
 	ThinkingWordIdx int
-	BodyView   string
-	FooterView string
+	ThinkingLabel   string
+	SpinnerView     string
+	BodyView        string
+	FooterView      string
 
 	// Slash command picker.
 	PickerIndex int
@@ -74,7 +76,7 @@ func RenderBodyContent(s State) string {
 		b.WriteString(renderModelPicker(s))
 	} else {
 		b.WriteString(renderMessages(s.Messages, layout.ComposerWidth))
-		b.WriteString(renderThinking(s.Thinking, s.VerbIdx, s.ThinkingWordIdx))
+		b.WriteString(renderThinking(s.Thinking, s.VerbIdx, s.ThinkingWordIdx, s.ThinkingLabel, s.SpinnerView))
 	}
 
 	return b.String()
@@ -152,4 +154,3 @@ func renderedLineCount(content string) int {
 func RenderedLineCount(content string) int {
 	return renderedLineCount(content)
 }
-
