@@ -223,7 +223,7 @@ func AutoDetectProvider() Provider {
 		model := modelOrDefault(os.Getenv("LUNA_MODEL"), def.defaultModel)
 
 		if def.name == ProviderAnthropic {
-			return NewClaudeProvider()
+			return NewClaudeProvider(model)
 		}
 
 		baseURL := def.baseURL
@@ -243,8 +243,9 @@ func ProviderForModel(name ProviderName, modelID string) Provider {
 		if def.name != name {
 			continue
 		}
+		modelID = modelOrDefault(modelID, def.defaultModel)
 		if def.name == ProviderAnthropic {
-			return NewClaudeProvider()
+			return NewClaudeProvider(modelID)
 		}
 		key := os.Getenv(def.envKey)
 		baseURL := def.baseURL

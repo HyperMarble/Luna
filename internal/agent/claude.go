@@ -10,17 +10,21 @@ import (
 // claudeProvider calls the Anthropic Messages API.
 type claudeProvider struct {
 	client anthropic.Client
+	model  string
 }
 
 // NewClaudeProvider returns a Provider backed by the Anthropic API wrapper.
 // Reads ANTHROPIC_API_KEY from the environment.
-func NewClaudeProvider() Provider {
-	return &claudeProvider{client: anthropic.NewClient()}
+func NewClaudeProvider(model string) Provider {
+	if model == "" {
+		model = "claude-sonnet-4-6"
+	}
+	return &claudeProvider{client: anthropic.NewClient(), model: model}
 }
 
 func (p *claudeProvider) messageParams(prompt string) anthropic.MessageNewParams {
 	return anthropic.MessageNewParams{
-		Model:     anthropic.ModelClaude3_7SonnetLatest,
+		Model:     anthropic.Model(p.model),
 		MaxTokens: 4096,
 		System:    []anthropic.TextBlockParam{{Text: systemPrompt}},
 		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(prompt))},
